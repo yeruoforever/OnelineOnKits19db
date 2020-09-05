@@ -1,7 +1,24 @@
 # 一行代码处理kits19数据集
 
+使用代码前确保已安装如下packages：
+* nibabel
+* numpy
+* scipy
+* sklearn
+* matplotlib
 
+Kits19数据集目录结构如下所示，以下示例均使用`data`目录作为数据根目录。
+```bash
+─kits19
+  ├─data
+  │  ├─case_00000
+  │  ├─case_00001
+  │  ├─case_00002
+  │  ├─case_00003
+  │  │  ├─imaging.nii.gz
+  │  │  ├─segmentation.nii.gz
 
+```
 
 
 
@@ -12,23 +29,38 @@ data_dir="D:/kits19/data"
 
 ## 读取3D图像和标注
 
+获取图像数据使用`get_imgaging(data_dir,case_id)`
+
+获取标注数据使用`get_segmentation(data_dir,case_id)`
+
+返回类型均为`Nifti1Image`,使用方法`get_data(img_or_seg)`获取其中数据,返回类型为`ndarray`
+
 
 ```python
 case_id=10
 img=get_imaging(data_dir,case_id)
 seg=get_segmentation(data_dir,case_id)
-[img,seg]
+print(type(img),type(seg))
+img_data=get_data(img)
+print(type(img_data))
+print(img_data.shape)
+
 ```
 
-
-
-
-    [<nibabel.nifti1.Nifti1Image at 0x20d01163f88>,
-     <nibabel.nifti1.Nifti1Image at 0x20d01175408>]
-
-
+    <class 'nibabel.nifti1.Nifti1Image'> <class 'nibabel.nifti1.Nifti1Image'>
+    <class 'numpy.ndarray'>
+    (50, 512, 512)
+    
 
 ## 两肾可视化
+visualization(data_dir,case_id,resample_1_1,clip)
+`data_dir`为数据集根目录
+
+`case_id`为病例id
+
+`resample_1_1`是否按照`d:w:h=1:1:1`可视化
+
+`clip=array([val_min,val_max])`为像素值截断区间
 
 
 ```python
@@ -40,8 +72,8 @@ visualization(data_dir,case_id,resample_1_1=True,clip=array([-30,280]))
 
 
 ## 获取图像信息
-* 3D图像数组大小
-* 体素间距（mm）
+* 3D图像数组大小:`get_size()`
+* 体素间距（mm）:`get_spacing()`
 
 
 ```python
@@ -82,6 +114,19 @@ for i,(kidney,center) in enumerate(zip(kidneys,centers)):
     kidney 1 center [ 31 280 170]
     kidney 0 center [ 31 280 170] range (slice(15, 49, None), slice(226, 339, None), slice(132, 214, None))
     kidney 1 center [ 22 296 337] range (slice(9, 39, None), slice(246, 351, None), slice(290, 379, None))
+    
+
+可直接使用返回的`cube`获得3D patch
+
+
+```python
+for kidney in kidneys:
+    img_kidney=img_data[kidney]
+    print(img_kidney.shape)
+```
+
+    (34, 113, 82)
+    (30, 105, 89)
     
 
 ## 重采样
@@ -132,8 +177,56 @@ print(img_data_resample.shape)
 ```python
 path_sample="D:/tmp/"
 
-save_imaging(path_sample,case_id,img_resample)
-save_segmentation(path_sample,case_id,seg_resample)
+save_imaging(path_sample,case_id,img)
+save_segmentation(path_sample,case_id,seg)
+```
+
+## 数据集重采样示例
+* 将数据集（病例id 0-209）重采样至3.22 mm, 1.62 mm, 1.62 mm,并保存到`resample`目录
+* 统计重采样后各肾脏立方体顶点坐标
+
+
+```python
+def save_json(obj,data_dir:str):
+    with open(join(data_dir,"kidney_ranges.json"),"w") as f:
+        json.dump(obj,f)
+
+def resample(path_origin:str,path_resample:str,case_range:range,target_spacing:ndarray=array([[3.22,1.62,1.62]])):
+    if not exists(path_resample):
+        makedirs(path_resample)
+    ranges=[]
+    for case_id in case_range:
+        print("resampling %05d..."%case_id)
+        img=get_imaging(path_origin,case_id)
+        seg=get_segmentation(path_origin,case_id)
+        img_resample=resample_image(img)
+        seg_resample=resample_segmentation(seg)
+        kidneys,_=analyze_kidney(seg_resample)
+        ranges.append([
+            {
+                "d_min":int(kidneys[0][0].start),
+                "d_max":int(kidneys[0][0].stop),
+                "w_min":int(kidneys[0][1].start),
+                "w_max":int(kidneys[0][1].stop),
+                "h_min":int(kidneys[0][2].start),
+                "h_max":int(kidneys[0][2].stop),
+            },
+            {
+                "d_min":int(kidneys[1][0].start),
+                "d_max":int(kidneys[1][0].stop),
+                "w_min":int(kidneys[1][1].start),
+                "w_max":int(kidneys[1][1].stop),
+                "h_min":int(kidneys[1][2].start),
+                "h_max":int(kidneys[1][2].stop),
+            },
+        ])
+        save_imaging(path_resample,case_id,img_resample)
+        save_segmentation(path_resample,case_id,seg_resample)
+    save_json(ranges,path_resample)
+
+
+
+resample("D:/kits19/data","D:/kits19/resample",range(210))
 ```
 
 ## 统计像素信息
@@ -162,8 +255,3 @@ print("nums",nums)
     std 2900307.079352456
     nums 1766326272
     
-
-
-```python
-
-```

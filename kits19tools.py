@@ -104,6 +104,15 @@ def get_size(img:Nifti1Image)->ndarray:
     '''
     return array(img.shape)
 
+def get_data(img:Nifti1Image)->ndarray:
+    '''获取影像数据
+    args：
+        img:Nifti1Image
+    return:
+        data:ndarray size[d,w,h]
+    '''
+    return img.get_fdata()
+
 def resample_size(size:ndarray,space_origin:ndarray,space_target:ndarray=array([3.22,1.62,1.62]))->ndarray:
     # 粗略估计
     '''估计重采样后的影像数据大小（各维度误差不超过±1）
@@ -218,7 +227,8 @@ def analyze_kidney(seg:Nifti1Image,align=False)->list:
         seg:Nifti1Image 体素点标注
         align:bool      两肾选框是否对其
     return：
-        list:list[tuple(slice,N)...]    每种前景对象在各个维度上的范围切片对象，N为维度 
+        list:list[tuple(slice,N)...]    两肾在各个维度上的范围切片对象，N为维度 
+        centers:ndarray 两肾质心坐标
     '''
     data=seg.get_fdata()
     indexs=argwhere(data>0)
@@ -328,7 +338,12 @@ def statistics_large_memory(data_dir)->tuple:
     return values.mean(),values.std(),reduce(lambda x,y:x*y,values.shape)
 
 def visualization(path:str,case_id:int,resample_1_1:bool=False,clip=[-30,300]):
-    '''
+    '''以每个肾脏的质心所在位置，绘制三视图
+    args:
+        case_id:int         病例id
+        resample_1_1:bool   是否按照d:w:h=1:1:1可视化
+        clip:ndarray        像素值截断区间[val_min,val_max]   
+
     '''
     img=get_imaging(path,case_id)
     seg=get_segmentation(path,case_id)
@@ -338,9 +353,7 @@ def visualization(path:str,case_id:int,resample_1_1:bool=False,clip=[-30,300]):
 
     kindeys,centers=analyze_kidney(seg)
     
-    # img_data=img.get_fdata()
     img_data=img.get_fdata().clip(*clip)
-    # img_data=seg.get_fdata()
 
     fig=plt.subplots(figsize=(16,8))
     ax=plt.subplot2grid((2,4),(0,0))
@@ -428,9 +441,3 @@ def visualization(path:str,case_id:int,resample_1_1:bool=False,clip=[-30,300]):
 
     # plt.savefig("%05d.jpg"%case_id)
     plt.show()
-
-
-if __name__ == "__main__":
-    path="D:/kits19/data"
-    for case_id in range(210):
-        visualization(path,case_id)
