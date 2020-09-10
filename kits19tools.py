@@ -388,7 +388,7 @@ def visualization(path:str,case_id:int,resample_1_1:bool=False,clip=[-30,300]):
     )
     ax=plt.subplot2grid((2,4),(1,1),projection="3d")
     p=img_data[kindeys[0]]
-    verts, faces ,_,_= measure.marching_cubes(p)
+    verts, faces ,_,_= measure.marching_cubes_lewiner(p)
     mesh = Poly3DCollection(verts[faces], alpha=0.70)
     face_color = [0.45, 0.45, 0.75]
     mesh.set_facecolor(face_color)
@@ -429,7 +429,7 @@ def visualization(path:str,case_id:int,resample_1_1:bool=False,clip=[-30,300]):
     )
     ax=plt.subplot2grid((2,4),(1,3),projection="3d")
     p=img_data[kindeys[1]]
-    verts, faces ,_,_= measure.marching_cubes(p)
+    verts, faces ,_,_= measure.marching_cubes_lewiner(p)
     mesh = Poly3DCollection(verts[faces], alpha=0.70)
     face_color = [0.45, 0.45, 0.75]
     mesh.set_facecolor(face_color)
@@ -441,3 +441,29 @@ def visualization(path:str,case_id:int,resample_1_1:bool=False,clip=[-30,300]):
 
     # plt.savefig("%05d.jpg"%case_id)
     plt.show()
+
+
+def count_volume_pixel(data_dir:str,cases:list):
+    '''统计数据集中各个不同分类像素点总数及所占比例
+    args:
+        data_dir:str    数据集根目录
+        cases:list[int] 所选病例
+    return：
+        counts:ndarray  [bgs,kidneys,tumours]
+        ratios:ndarray  [bgs,kidneys,tumours]
+    '''
+    count_bg=0.
+    count_kidney=0.
+    count_tumour=0.
+    for case_id in cases:
+        seg=get_segmentation(data_dir,case_id)
+        data=get_data(seg)
+        kidney=(data==1).sum()
+        tumour=(data==2).sum()
+        bg=data.size-kidney-tumour
+        count_bg+=bg
+        count_kidney+=kidney
+        count_tumour+=tumour
+    total=count_tumour+count_kidney+count_bg
+    count=array([count_bg,count_kidney,count_tumour])
+    return count,count/total

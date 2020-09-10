@@ -1,4 +1,10 @@
 # 一行代码处理kits19数据集
+* 一行代码肾脏可视化（三视图）
+* 一行代码读取3D图像和标注
+* 一行代码统计像素值方差、均值、数量和比例
+* 一行代码进行重采样并保存
+* 一行代码分析前景位置信息
+* 一行代码获取肾脏3D patch
 
 使用代码前确保已安装如下packages：
 * nibabel
@@ -85,7 +91,7 @@ print(size,space)
     [ 50 512 512] [3.        0.7578125 0.7578125]
     
 
-## 分析前景位置信息
+## 分析前景位置信息并获取3D patch
 
 * 前景3D切片范围（一个立方体，同时包含两个肾脏和肿瘤）
 * 肾脏和肿瘤3D切片范围（两个立方体，包含两个肾脏的立方体和包含所有肿瘤的立方体）
@@ -229,7 +235,7 @@ def resample(path_origin:str,path_resample:str,case_range:range,target_spacing:n
 resample("D:/kits19/data","D:/kits19/resample",range(210))
 ```
 
-## 统计像素信息
+## 统计像素均值、方差
 * 统计单个病例
 * 统计整个数据集
 
@@ -255,3 +261,21 @@ print("nums",nums)
     std 2900307.079352456
     nums 1766326272
     
+
+## 统计不同分类像素点个数及比例
+* counts:\[background,kidney,tumour\]
+* radios:\[background,kidney,tumour\]
+
+
+```python
+counts,radios=count_volume_pixel(data_dir,cases)
+print(counts,radios)
+```
+
+    [1.75328902e+09 1.15637000e+07 1.47354900e+06] [9.92619003e-01 6.54675197e-03 8.34245079e-04]
+    
+
+
+```python
+
+```
